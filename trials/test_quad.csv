@@ -1,4 +1,0 @@
-trial_num,top_stim,top_cat,right_stim,right_cat,middle_stim,middle_cat,left_stim,left_cat
-0,VCS_190,b,VCS_10,d,VCS_110,a,VCS_270,c
-1,VCS_200,b,VCS_110,a,VCS_290,c,VCS_20,d
-2,VCS_20,d,VCS_290,c,VCS_110,a,VCS_200,b

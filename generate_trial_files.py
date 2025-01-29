@@ -27,11 +27,11 @@ def generate_quad_trials(condition):
 	#print(all_images)
 
 	
-	all_possible_triads = list(combinations(all_images, 3))
+	all_possible_triads = list(permutations(all_images, 3))
 	# print(all_possible_triads)
 	
 	all_possible_quads= generate_trials.get_quads(all_possible_triads, condition)
-	print(all_possible_quads)
+	#all_possible_quads = random.shuffle(all_possible_quads)
 	
 
 	
@@ -66,5 +66,5 @@ def generate_quad_trials(condition):
         		
 
 
-generate_quad_trials(1)
+generate_quad_trials(3)
 

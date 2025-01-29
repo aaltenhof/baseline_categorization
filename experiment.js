@@ -19,7 +19,7 @@ async function initializeAndRun() {
 
 const filename = `${participant_id}.csv`;
 
-// Function to load trials based on condition
+// Function to load and shuffle trials
 async function loadTrials() {
     try {
         // Get condition from DataPipe
@@ -41,9 +41,24 @@ async function loadTrials() {
             skipEmptyLines: true,
             dynamicTyping: true
         });
+
+        // Shuffle the trials
+        let shuffledData = [...results.data];
+        for (let i = shuffledData.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledData[i], shuffledData[j]] = [shuffledData[j], shuffledData[i]];
+        }
         
-        console.log('Loaded trials from:', filename);
-        return results.data;
+        // Update trial numbers to match new order
+        shuffledData = shuffledData.map((trial, index) => ({
+            ...trial,
+            trial_num: index + 1  // Update trial numbers to reflect new order
+        }));
+        
+        console.log('Loaded and shuffled trials from:', filename);
+        console.log('Number of trials:', shuffledData.length);
+        
+        return shuffledData;
     } catch (error) {
         console.error('Error loading trials:', error);
         return [];

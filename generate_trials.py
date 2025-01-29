@@ -124,17 +124,16 @@ def get_quads(all_possible_triads, condition):
 
                 # combine shape and category info to...
                 quad_info = [i + j for i, j in zip(quad_shapes, quad_cats)]
-                print(quad_info)
+                #print(quad_info)
                 
-                for item in quad_info:
-                    shapes = []
-                    cats = []
-                    for item in quad_info: 
-                        match = re.match(r"(VCS_\d+)([a-zA-Z]?)", item)
-                        shapes.append(match.group(1))
-                        cats.append(match.group(1))
-
-                    acceptable_quads.append({'quad': shapes, 'cat': cats})
+                vcs_numbers, letters = zip(*[re.match(r"(VCS_\d+)([a-zA-Z]?)", item).groups() for item in quad_info])
+                    
+                # Convert tuples to lists
+                vcs_numbers = list(vcs_numbers)
+                #print (vcs_numbers)
+                letters = list(letters)
+                    
+                acceptable_quads.append({'quad': vcs_numbers, 'cat': letters})
 
     # print statement to check if bottom shuffling works      
     #i = 0
