@@ -68,7 +68,7 @@ async function loadTrials() {
         // Update trial numbers to match new order
         shuffledData = shuffledData.map((trial, index) => ({
             ...trial,
-            trial_num: index + 1
+            trial_num: index
         }));
         
         return shuffledData;
@@ -278,13 +278,7 @@ function getFilteredData() {
         time_elapsed: trial.time_elapsed,
         prolific_id: prolific_id,
         response_stim: trial.response_stim,
-        response_cat: trial.response_cat,
-        orig_left_stim: trial.orig_left_stim,
-        orig_left_cat: trial.orig_left_cat,
-        orig_middle_stim: trial.orig_middle_stim,
-        orig_middle_cat: trial.orig_middle_cat,
-        orig_right_stim: trial.orig_right_stim,
-        orig_right_cat: trial.orig_right_cat
+        response_cat: trial.response_cat
     }));
 
     // Convert to CSV string manually to ensure proper formatting
