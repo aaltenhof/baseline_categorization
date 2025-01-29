@@ -136,9 +136,11 @@ function createTrials(trialsData) {
                 const response_stim = choiceStims[data.response].stim;
                 const response_cat = choiceStims[data.response].cat;
                 
+                // Add these properties to the data object
                 data.response_stim = response_stim;
                 data.response_cat = response_cat;
                 data.rt = Math.round(data.rt);
+                data.trial_part = 'choice'; // Add this to make filtering easier
             }
         };
 
@@ -205,16 +207,84 @@ const pid = {
     }
 };
 
-cSLwXHzhSpL2
+const fullscreen_trial = {
+    type: jsPsychFullscreen,
+    fullscreen_mode: true,
+    delay_after: 0,
+    button_label: null,
+    message: null
+};
 
+// End fullscreen before survey redirect
+const end_fullscreen = {
+    type: jsPsychFullscreen,
+    fullscreen_mode: false,
+    button_label: null,
+    message: null
+};
+
+// Survey redirect trial - replace SURVEY_URL with your actual survey URL
+const survey_redirect = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `
+        <p>You have completed the experiment!</p>
+        <p>You will now be redirected to a brief survey, after which you will receive your Prolific completion code</p>
+        <p>Press any key to continue.</p>
+    `,
+    on_finish: function() {
+        window.location = "https://uwmadison.co1.qualtrics.com/jfe/form/SV_a9GuS8KJgA1mJTg"; // Replace with your survey URL
+    }
+};
+
+// Function to filter and format the data before saving
+function getFilteredData() {
+    // Get all data
+    const allData = jsPsych.data.get().values();
+
+    // Only keep actual choice trials by checking multiple criteria
+    const choiceTrials = allData.filter(trial => {
+        // Check if it's a button response trial (choices) AND has the required data structure
+        return trial.trial_type === 'image-button-response'});
+    
+    // Filter choice trials and format data
+    const filteredData = choiceTrials.map(trial => ({
+            subCode: participant_id,
+            condition: trial.condition || '',
+            trial_num: trial.trial_num,
+            top_stim: trial.top_stim,
+            top_cat: trial.top_cat,
+            left_stim: trial.left_stim,
+            left_cat: trial.left_cat,
+            middle_stim: trial.middle_stim,
+            middle_cat: trial.middle_cat,
+            right_stim: trial.right_stim,
+            right_cat: trial.right_cat,
+            rt: trial.rt,
+            time_elapsed: trial.time_elapsed,
+            prolific_id: prolific_id,
+            response_stim: trial.response_stim,
+            response_cat: trial.response_cat,
+            orig_left_stim: trial.orig_left_stim,
+            orig_left_cat: trial.orig_left_cat,
+            orig_middle_stim: trial.orig_middle_stim,
+            orig_middle_cat: trial.orig_middle_cat,
+            orig_right_stim: trial.orig_right_stim,
+            orig_right_cat: trial.orig_right_cat
+        }));
+
+    return JSON.stringify(filteredData);
+}
+
+// Updated save_data configuration
 const save_data = {
     type: jsPsychPipe,
     action: "save",
     experiment_id: "cSLwXHzhSpL2",
     filename: filename,
-    data_string: ()=>jsPsych.data.get().csv(),
+    data_string: getFilteredData,
     success_callback: function() {
         console.log('Data saved successfully');
+        console.log('Number of trials saved:', JSON.parse(getFilteredData()).length);
     },
     error_callback: function(error) {
         console.error('Error saving data:', error);
@@ -236,10 +306,13 @@ async function runExperiment() {
         // Create timeline
         const timeline = [
             consent,
+            fullscreen_trial,
             pid,
             instructions,
             ...createTrials(trialsData),
-            save_data
+            save_data,
+            end_fullscreen,
+            survey_redirect
 
         ];
 
