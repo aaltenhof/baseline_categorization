@@ -1,5 +1,5 @@
-// Declare participant_id at the top
-let participant_id;
+// Generate participant ID at the start
+let participant_id = `participant${Math.floor(Math.random() * 999) + 1}`;
 let prolific_id;
 
 // Initialize jsPsych
@@ -17,6 +17,12 @@ async function generateParticipantId() {
     const baseId = Math.floor(Math.random() * 999) + 1;
     return `participant${baseId}`;
 }
+
+// Add participant ID to all data
+jsPsych.data.addProperties({
+    participant_id: participant_id,
+    condition: null  // This will be updated when we get the condition
+});
 
 // Initialize participant ID
 const filename = `${participant_id}.csv`;
@@ -311,13 +317,18 @@ const save_data = {
     }
 };
 
-// Main experiment function
 async function runExperiment() {
     try {
-        // Set participant_id
-        participant_id = await generateParticipantId();
+        // Get condition from DataPipe
+        const condition = await jsPsychPipe.getCondition("cSLwXHzhSpL2");
+        console.log('Assigned condition:', condition);
         
-        // Load trials from CSV
+        // Update the condition in the data
+        jsPsych.data.addProperties({
+            condition: condition
+        });
+
+        // Load trials
         const trialsData = await loadTrials();
         console.log('Loaded trials:', trialsData.length);
         
@@ -341,7 +352,6 @@ async function runExperiment() {
                         allImages.push(getImagePath(trial.middle_stim));
                         allImages.push(getImagePath(trial.right_stim));
                     });
-                    console.log('Preloading images:', allImages);
                     return allImages;
                 }
             },
@@ -351,8 +361,6 @@ async function runExperiment() {
             end_fullscreen,
             survey_redirect
         ];
-
-        console.log('Timeline created with', timeline.length, 'items');
 
         // Run the experiment
         await jsPsych.run(timeline);
