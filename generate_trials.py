@@ -101,7 +101,7 @@ def get_quads(all_possible_triads, condition):
             xb_nearest_diff = abs((xb_og_diff + 180) % 360 - 180)
             # print(xb_nearest_diff)
 
-            # check if the distance from item x to item a is +/- 10 the distance from item x to item b
+            # check if the distance from item x to item a is equal the distance from item x to item b
             if (xb_nearest_diff == xa_nearest_diff):
                 # print (triad_angles)
                 # print (xa_nearest_diff)

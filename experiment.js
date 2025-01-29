@@ -2,13 +2,26 @@
 let participant_id = `participant${Math.floor(Math.random() * 999) + 1}`;
 let prolific_id;
 
-// Initialize jsPsych
+// Function to get URL parameters
+function getUrlParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+}
+
+// Get MTurk Worker ID from URL
+const workerId = getUrlParam('workerId');
+if (!workerId) {
+    console.error('No worker ID found in URL');
+}
+
+// Initialize jsPsych with MTurk worker ID
 const jsPsych = initJsPsych({
     on_finish: function() {
         console.log('Experiment finished');
-        const data = jsPsych.data.get().values();
-        console.log('Final data length:', data.length);
-        console.log('Data was saved:', jsPsych.data.get().select('completed').values[0]);
+        console.log('Worker ID:', workerId);
+        console.log('Number of trials:', jsPsych.data.get()
+            .filter({trial_type: 'image-button-response'})
+            .count());
     }
 });
 
@@ -21,17 +34,50 @@ async function generateParticipantId() {
 // Add participant ID to all data
 jsPsych.data.addProperties({
     participant_id: participant_id,
+    subject_id: workerId,
     condition: null  // This will be updated when we get the condition
 });
 
 // Initialize participant ID
 const filename = `${participant_id}.csv`;
 
+// Function to generate completion code
+async function getCompletionCode() {
+    try {
+        const response = await fetch('http://sapir.psych.wisc.edu/~steve/KeyGenQualtrics.php');
+        const code = await response.text();
+        return code.trim();
+    } catch (error) {
+        console.error('Error generating completion code:', error);
+        // Fallback code generation if the PHP script fails
+        const random = Math.random().toString(36).substring(2, 15);
+        return `MTzvz${random}`;
+    }
+}
+
 // Function to create image path
 function getImagePath(stimName) {
     return `stimuli/visual/${stimName}.png`;
 }
 
+// Completion code display trial
+const completion_code = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: async function() {
+        const code = await getCompletionCode();
+        return `
+            <p>You have completed the experiment!</p>
+            <p>Your completion code is:</p>
+            <h1>${code}</h1>
+            <p>Please copy this code and paste it into the box on MTurk to receive payment.</p>
+            <p>You may close this window after copying the code.</p>
+            <p>Press any key to end the experiment.</p>
+        `;
+    },
+    data: {
+        trial_type: 'completion'
+    }
+};
 // Function to load trials
 async function loadTrials() {
     try {
@@ -183,14 +229,27 @@ const instructions = {
     `
 };
 
-// Create consent trial
 const consent = {
     type: jsPsychHtmlButtonResponse,
     stimulus: `
-        <div style="width: 800px;">
+        <div style="width: 800px; margin: 0 auto; text-align: left">
             <h3>Consent to Participate in Research</h3>
-            <p>Consent will go here</p>
-            <p>Please click "I Agree" if you wish to participate.</p>
+            
+            <p>The task you are about to do is sponsored by University of Wisconsin-Madison. It is part of a protocol titled "What are we learning from language?".</p>
+
+            <p>The task you are asked to do involves making simple responses to words and sentences. For example, you may be asked to rate a pair of words on their similarity or to indicate how true you think a given sentence is. More detailed instructions for this specific task will be provided on the next screen.</p>
+
+            <p>This task has no direct benefits. We do not anticipate any psychosocial risks. There is a risk of a confidentiality breach. Participants may become fatigued or frustrated due to the length of the study.</p>
+
+            <p>The responses you submit as part of this task will be stored on a sercure server and accessible only to researchers who have been approved by UW-Madison. Processed data with all identifiers removed could be used for future research studies or distributed to another investigator for future research studies without additional informed consent from the subject or the legally authorized representative.</p>
+
+            <p>You are free to decline to participate, to end participation at any time for any reason, or to refuse to answer any individual question without penalty or loss of earned compensation. We will not retain data from partial responses. If you would like to withdraw your data after participating, you may send an email lupyan@wisc.edu or complete this form which will allow you to make a request anonymously.</p>
+
+            <p>If you have any questions or concerns about this task please contact the principal investigator: Prof. Gary Lupyan at lupyan@wisc.edu.</p>
+
+            <p>If you are not satisfied with response of the research team, have more questions, or want to talk with someone about your rights as a research participant, you should contact University of Wisconsin's Education Research and Social & Behavioral Science IRB Office at 608-263-2320.</p>
+
+            <p><strong>By clicking the box below, I consent to participate in this task and affirm that I am at least 18 years old.</strong></p>
         </div>
     `,
     choices: ['I Agree', 'I Do Not Agree'],
@@ -201,24 +260,6 @@ const consent = {
         if(data.response == 1) {
             jsPsych.endExperiment('Thank you for your time. The experiment has been ended.');
         }
-    }
-};
-
-// Create Prolific ID trial
-const pid = {
-    type: jsPsychSurveyText,
-    questions: [
-        {prompt: `<p>Please enter your Prolific ID</p>`}
-    ],
-    data: {
-        trial_type: 'pid'
-    },
-    on_finish: function(data) {
-        prolific_id = data.response.Q0.trim();
-        console.log('Captured Prolific ID:', prolific_id);
-        jsPsych.data.addProperties({
-            prolific_id: prolific_id
-        });
     }
 };
 
@@ -335,7 +376,6 @@ async function runExperiment() {
         const timeline = [
             consent,
             fullscreen_trial,
-            pid,
             {
                 type: jsPsychPreload,
                 images: function() {
@@ -353,7 +393,7 @@ async function runExperiment() {
             ...createTrials(trialsData),
             save_data,
             end_fullscreen,
-            survey_redirect
+            completion_code  // Replace survey_redirect with completion code display
         ];
 
         // Run the experiment
