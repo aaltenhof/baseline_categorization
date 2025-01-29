@@ -3,11 +3,7 @@ let participant_id;
 let prolific_id;
 
 // Initialize jsPsych
-const jsPsych = initJsPsych({
-    on_finish: function() {
-        jsPsych.data.displayData();
-    }
-});
+const jsPsych = initJsPsych();
 
 // Generate participant ID
 async function generateParticipantId() {
@@ -19,6 +15,13 @@ async function generateParticipantId() {
 async function initializeAndRun() {
     // Set participant_id first before creating any trials
     participant_id = await generateParticipantId();
+
+    // get different trial files by condition
+    const condition = await jsPsychPipe.getCondition("cSLwXHzhSpL2");
+    if(condition == 0) {const response = await fetch('trials/test_quad.csv')}
+    if(condition == 1) {const response = await fetch('trials/test_quad.csv')}
+    if(condition == 2) {const response = await fetch('trials/test_quad.csv')}
+    if(condition == 3) {const response = await fetch('trials/test_quad.csv')}
     
     // Then create and run timeline
     const timeline = await createTimeline();
@@ -246,34 +249,48 @@ function getFilteredData() {
         // Check if it's a button response trial (choices) AND has the required data structure
         return trial.trial_type === 'image-button-response'});
     
-    // Filter choice trials and format data
-    const filteredData = choiceTrials.map(trial => ({
-            subCode: participant_id,
-            condition: trial.condition || '',
-            trial_num: trial.trial_num,
-            top_stim: trial.top_stim,
-            top_cat: trial.top_cat,
-            left_stim: trial.left_stim,
-            left_cat: trial.left_cat,
-            middle_stim: trial.middle_stim,
-            middle_cat: trial.middle_cat,
-            right_stim: trial.right_stim,
-            right_cat: trial.right_cat,
-            rt: trial.rt,
-            time_elapsed: trial.time_elapsed,
-            prolific_id: prolific_id,
-            response_stim: trial.response_stim,
-            response_cat: trial.response_cat,
-            orig_left_stim: trial.orig_left_stim,
-            orig_left_cat: trial.orig_left_cat,
-            orig_middle_stim: trial.orig_middle_stim,
-            orig_middle_cat: trial.orig_middle_cat,
-            orig_right_stim: trial.orig_right_stim,
-            orig_right_cat: trial.orig_right_cat
-        }));
-
-    return JSON.stringify(filteredData);
-}
+    function getFilteredData() {
+        // Add console log to verify choiceTrials exists and has content
+        console.log('choiceTrials:', choiceTrials);
+        console.log('Number of choiceTrials:', choiceTrials.length);
+        
+        // Filter choice trials and format data
+        const filteredData = choiceTrials.map(trial => {
+        // Add individual trial logging for debugging
+                console.log('Processing trial:', trial);
+        
+                return {
+                    subCode: participant_id,
+                    condition: trial.condition || '',
+                    trial_num: trial.trial_num,
+                    top_stim: trial.top_stim,
+                    top_cat: trial.top_cat,
+                    left_stim: trial.left_stim,
+                    left_cat: trial.left_cat,
+                    middle_stim: trial.middle_stim,
+                    middle_cat: trial.middle_cat,
+                    right_stim: trial.right_stim,
+                    right_cat: trial.right_cat,
+                    rt: trial.rt,
+                    time_elapsed: trial.time_elapsed,
+                    prolific_id: prolific_id,
+                    response_stim: trial.response_stim,
+                    response_cat: trial.response_cat,
+                    orig_left_stim: trial.orig_left_stim,
+                    orig_left_cat: trial.orig_left_cat,
+                    orig_middle_stim: trial.orig_middle_stim,
+                    orig_middle_cat: trial.orig_middle_cat,
+                    orig_right_stim: trial.orig_right_stim,
+                    orig_right_cat: trial.orig_right_cat
+                };
+            });
+        
+            // Log the filtered data before stringifying
+            console.log('Filtered Data:', filteredData);
+            console.log('Number of filtered trials:', filteredData.length);
+        
+            return JSON.stringify(filteredData);
+        }
 
 // Updated save_data configuration
 const save_data = {
