@@ -3,7 +3,14 @@ let participant_id;
 let prolific_id;
 
 // Initialize jsPsych
-const jsPsych = initJsPsych();
+const jsPsych = initJsPsych({
+    on_finish: function() {
+        console.log('Experiment finished');
+        const data = jsPsych.data.get().values();
+        console.log('Final data length:', data.length);
+        console.log('Data was saved:', jsPsych.data.get().select('completed').values[0]);
+    }
+});
 
 // Generate participant ID
 async function generateParticipantId() {
@@ -11,15 +18,15 @@ async function generateParticipantId() {
     return `participant${baseId}`;
 }
 
-// Initialize and run the experiment
-async function initializeAndRun() {
-    // Set participant_id first before creating any trials
-    participant_id = await generateParticipantId();
-}
-
+// Initialize participant ID
 const filename = `${participant_id}.csv`;
 
-// Function to load and shuffle trials
+// Function to create image path
+function getImagePath(stimName) {
+    return `stimuli/visual/${stimName}.png`;
+}
+
+// Function to load trials
 async function loadTrials() {
     try {
         // Get condition from DataPipe
@@ -42,6 +49,9 @@ async function loadTrials() {
             dynamicTyping: true
         });
 
+        // Log the first trial to check structure
+        console.log('Sample trial structure:', results.data[0]);
+
         // Shuffle the trials
         let shuffledData = [...results.data];
         for (let i = shuffledData.length - 1; i > 0; i--) {
@@ -52,22 +62,14 @@ async function loadTrials() {
         // Update trial numbers to match new order
         shuffledData = shuffledData.map((trial, index) => ({
             ...trial,
-            trial_num: index + 1  // Update trial numbers to reflect new order
+            trial_num: index + 1
         }));
-        
-        console.log('Loaded and shuffled trials from:', filename);
-        console.log('Number of trials:', shuffledData.length);
         
         return shuffledData;
     } catch (error) {
         console.error('Error loading trials:', error);
         return [];
     }
-}
-
-// Function to create image path
-function getImagePath(stimName) {
-    return `stimuli/visual/${stimName}.png`;
 }
 
 // Function to create trials
@@ -91,14 +93,18 @@ function createTrials(trialsData) {
         // First part: Show only the top stimulus with placeholder space for buttons
         const topStimTrial = {
             type: jsPsychHtmlKeyboardResponse,
-            stimulus: `
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
-                    <img src="${getImagePath(trial.top_stim)}" 
-                         style="max-width:200px; max-height:200px;" 
-                         id="stimulus-image">
-                    <div style="height: 200px;"></div>  <!-- Placeholder for buttons -->
-                </div>
-            `,
+            stimulus: function() {
+                const imgPath = getImagePath(trial.top_stim);
+                console.log('Loading top stimulus:', imgPath);
+                return `
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+                        <img src="${imgPath}" 
+                             style="max-width:200px; max-height:200px;" 
+                             id="stimulus-image">
+                        <div style="height: 200px;"></div>
+                    </div>
+                `;
+            },
             choices: "NO_KEYS",
             trial_duration: 500,
             data: {
@@ -113,9 +119,11 @@ function createTrials(trialsData) {
             stimulus: getImagePath(trial.top_stim),
             stimulus_height: 200,
             maintain_aspect_ratio: true,
-            choices: choiceStims.map(stim => 
-                '<img src="' + getImagePath(stim.stim) + '" style="max-width:200px; max-height:200px;">'
-            ),
+            choices: choiceStims.map(stim => {
+                const imgPath = getImagePath(stim.stim);
+                console.log('Loading choice stimulus:', imgPath);
+                return '<img src="' + imgPath + '" style="max-width:200px; max-height:200px;">';
+            }),
             response_ends_trial: true,
             post_trial_gap: 500,
             data: {
@@ -124,31 +132,18 @@ function createTrials(trialsData) {
                 condition: trial.condition,
                 top_stim: trial.top_stim,
                 top_cat: trial.top_cat,
-                // Store shuffled positions
                 left_stim: choiceStims[0].stim,
                 left_cat: choiceStims[0].cat,
                 middle_stim: choiceStims[1].stim,
                 middle_cat: choiceStims[1].cat,
                 right_stim: choiceStims[2].stim,
                 right_cat: choiceStims[2].cat,
-                // Store original positions for reference
                 orig_left_stim: trial.left_stim,
                 orig_left_cat: trial.left_cat,
                 orig_middle_stim: trial.middle_stim,
                 orig_middle_cat: trial.middle_cat,
                 orig_right_stim: trial.right_stim,
                 orig_right_cat: trial.right_cat
-            },
-            on_load: function() {
-                let observer = new MutationObserver((mutations, obs) => {
-                    let stimulusElement = document.querySelector('.jspsych-image-button-response-stimulus');
-                    if (stimulusElement) {
-                        stimulusElement.setAttribute('id', 'stimulus-image');
-                        obs.disconnect();
-                    }
-                });
-            
-                observer.observe(document.body, { childList: true, subtree: true });
             },
             on_finish: function(data) {
                 // Use the shuffled positions for response recording
@@ -159,7 +154,7 @@ function createTrials(trialsData) {
                 data.response_stim = response_stim;
                 data.response_cat = response_cat;
                 data.rt = Math.round(data.rt);
-                data.trial_part = 'choice'; // Add this to make filtering easier
+                data.trial_part = 'choice';
             }
         };
 
@@ -213,18 +208,15 @@ const pid = {
         trial_type: 'pid'
     },
     on_finish: function(data) {
-        // Store Prolific ID from the response - survey-text stores it in response object
-        prolific_id = data.response.Q0.trim(); // trim to remove any whitespace
+        prolific_id = data.response.Q0.trim();
         console.log('Captured Prolific ID:', prolific_id);
-        
-        // Store it in jsPsych's data
         jsPsych.data.addProperties({
             prolific_id: prolific_id
         });
     }
 };
 
-// Automatic fullscreen trial
+// Fullscreen trials
 const fullscreen_trial = {
     type: jsPsychFullscreen,
     fullscreen_mode: true,
@@ -233,7 +225,6 @@ const fullscreen_trial = {
     message: null
 };
 
-// End fullscreen before survey redirect
 const end_fullscreen = {
     type: jsPsychFullscreen,
     fullscreen_mode: false,
@@ -256,10 +247,8 @@ const survey_redirect = {
 
 // Function to filter and format data for saving
 function getFilteredData() {
-    // Get all data
     const allData = jsPsych.data.get().values();
     
-    // Filter choice trials
     const choiceTrials = allData.filter(trial => 
         trial.trial_type === 'image-button-response' && 
         trial.top_stim !== undefined
@@ -267,7 +256,6 @@ function getFilteredData() {
     
     console.log('Number of choice trials found:', choiceTrials.length);
     
-    // Map to final format
     const formattedData = choiceTrials.map(trial => ({
         subCode: participant_id,
         condition: trial.condition || '',
@@ -294,7 +282,7 @@ function getFilteredData() {
     }));
 
     console.log('Formatted data length:', formattedData.length);
-    return JSON.stringify(formattedData);
+    return formattedData;
 }
 
 // Configure data saving
@@ -303,11 +291,14 @@ const save_data = {
     action: "save",
     experiment_id: "cSLwXHzhSpL2",
     filename: filename,
-    data_string: getFilteredData,
+    data_string: () => JSON.stringify(getFilteredData()),
     success_callback: function() {
         console.log('Data saved successfully to DataPipe');
-        const data = JSON.parse(getFilteredData());
+        const data = getFilteredData();
         console.log('Number of trials saved:', data.length);
+        jsPsych.data.addProperties({
+            completed: true
+        });
     },
     error_callback: function(error) {
         console.error('Error saving to DataPipe:', error);
@@ -317,6 +308,9 @@ const save_data = {
 // Main experiment function
 async function runExperiment() {
     try {
+        // Set participant_id
+        participant_id = await generateParticipantId();
+        
         // Load trials from CSV
         const trialsData = await loadTrials();
         console.log('Loaded trials:', trialsData.length);
@@ -331,6 +325,20 @@ async function runExperiment() {
             consent,
             fullscreen_trial,
             pid,
+            {
+                type: jsPsychPreload,
+                images: function() {
+                    const allImages = [];
+                    trialsData.forEach(trial => {
+                        allImages.push(getImagePath(trial.top_stim));
+                        allImages.push(getImagePath(trial.left_stim));
+                        allImages.push(getImagePath(trial.middle_stim));
+                        allImages.push(getImagePath(trial.right_stim));
+                    });
+                    console.log('Preloading images:', allImages);
+                    return allImages;
+                }
+            },
             instructions,
             ...createTrials(trialsData),
             save_data,
