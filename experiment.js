@@ -249,16 +249,16 @@ const survey_redirect = {
 function getFilteredData() {
     const allData = jsPsych.data.get().values();
     
+    // Filter choice trials
     const choiceTrials = allData.filter(trial => 
         trial.trial_type === 'image-button-response' && 
         trial.top_stim !== undefined
     );
     
-    console.log('Number of choice trials found:', choiceTrials.length);
-    
+    // Map to array of objects with specific field order
     const formattedData = choiceTrials.map(trial => ({
         subCode: participant_id,
-        condition: trial.condition || '',
+        condition: trial.condition,
         trial_num: trial.trial_num,
         top_stim: trial.top_stim,
         top_cat: trial.top_cat,
@@ -281,21 +281,27 @@ function getFilteredData() {
         orig_right_cat: trial.orig_right_cat
     }));
 
-    console.log('Formatted data length:', formattedData.length);
-    return formattedData;
+    // Convert to CSV string manually to ensure proper formatting
+    const headers = Object.keys(formattedData[0]).join(',');
+    const rows = formattedData.map(trial => 
+        Object.values(trial).map(value => 
+            typeof value === 'string' ? `"${value}"` : value
+        ).join(',')
+    );
+    
+    return headers + '\n' + rows.join('\n');
 }
+
 
 // Configure data saving
 const save_data = {
     type: jsPsychPipe,
     action: "save",
     experiment_id: "cSLwXHzhSpL2",
-    filename: filename,
-    data_string: () => JSON.stringify(getFilteredData()),
+    filename: `${participant_id}.csv`,
+    data_string: getFilteredData,
     success_callback: function() {
         console.log('Data saved successfully to DataPipe');
-        const data = getFilteredData();
-        console.log('Number of trials saved:', data.length);
         jsPsych.data.addProperties({
             completed: true
         });
