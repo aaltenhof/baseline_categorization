@@ -15,27 +15,25 @@ async function generateParticipantId() {
 async function initializeAndRun() {
     // Set participant_id first before creating any trials
     participant_id = await generateParticipantId();
-
-    // get different trial files by condition
-    const condition = await jsPsychPipe.getCondition("cSLwXHzhSpL2");
-    if(condition == 0) {const response = await fetch('trials/test_quad.csv')}
-    if(condition == 1) {const response = await fetch('trials/test_quad.csv')}
-    if(condition == 2) {const response = await fetch('trials/test_quad.csv')}
-    if(condition == 3) {const response = await fetch('trials/test_quad.csv')}
-    
-    // Then create and run timeline
-    const timeline = await createTimeline();
-    await jsPsych.run(timeline);
 }
 
 const filename = `${participant_id}.csv`;
 
-// Function to load and parse CSV
-//UPDATE TO dynamically generate trials file
-//create pid - if it is even ab, odd ad, else or rotates through a file that tells it when to generate??
+// Function to load trials based on condition
 async function loadTrials() {
     try {
-        const response = await fetch('trials/test_quad.csv');
+        // Get condition from DataPipe
+        const condition = await jsPsychPipe.getCondition("cSLwXHzhSpL2");
+        console.log('Assigned condition:', condition);
+        
+        // Determine which file to load
+        let filename = 'trials/test_quad.csv'; // default file
+        if (condition === 0) filename = 'trials/quad1.csv';
+        if (condition === 1) filename = 'trials/quad2.csv';
+        if (condition === 2) filename = 'trials/quad3.csv';
+        if (condition === 3) filename = 'trials/quad4.csv';
+        
+        const response = await fetch(filename);
         const csvText = await response.text();
         
         const results = Papa.parse(csvText, {
@@ -44,6 +42,7 @@ async function loadTrials() {
             dynamicTyping: true
         });
         
+        console.log('Loaded trials from:', filename);
         return results.data;
     } catch (error) {
         console.error('Error loading trials:', error);
@@ -55,6 +54,8 @@ async function loadTrials() {
 function getImagePath(stimName) {
     return `stimuli/visual/${stimName}.png`;
 }
+
+// Function to create trials
 function createTrials(trialsData) {
     let allTrials = [];
     
@@ -166,8 +167,6 @@ const instructions = {
     `
 };
 
-//Re-route to demographics
-
 // Create consent trial
 const consent = {
     type: jsPsychHtmlButtonResponse,
@@ -210,6 +209,7 @@ const pid = {
     }
 };
 
+// Automatic fullscreen trial
 const fullscreen_trial = {
     type: jsPsychFullscreen,
     fullscreen_mode: true,
@@ -226,7 +226,7 @@ const end_fullscreen = {
     message: null
 };
 
-// Survey redirect trial - replace SURVEY_URL with your actual survey URL
+// Survey redirect trial
 const survey_redirect = {
     type: jsPsychHtmlKeyboardResponse,
     stimulus: `
@@ -235,64 +235,54 @@ const survey_redirect = {
         <p>Press any key to continue.</p>
     `,
     on_finish: function() {
-        window.location = "https://uwmadison.co1.qualtrics.com/jfe/form/SV_a9GuS8KJgA1mJTg"; // Replace with your survey URL
+        window.location = "https://uwmadison.co1.qualtrics.com/jfe/form/SV_a9GuS8KJgA1mJTg";
     }
 };
 
-// Function to filter and format the data before saving
+// Function to filter and format data for saving
 function getFilteredData() {
     // Get all data
     const allData = jsPsych.data.get().values();
-
-    // Only keep actual choice trials by checking multiple criteria
-    const choiceTrials = allData.filter(trial => {
-        // Check if it's a button response trial (choices) AND has the required data structure
-        return trial.trial_type === 'image-button-response'});
     
-    function getFilteredData() {
-        // Add console log to verify choiceTrials exists and has content
-        console.log('choiceTrials:', choiceTrials);
-        console.log('Number of choiceTrials:', choiceTrials.length);
-        
-        // Filter choice trials and format data
-        const filteredData = choiceTrials.map(trial => {
-        // Add individual trial logging for debugging
-                console.log('Processing trial:', trial);
-        
-                return {
-                    subCode: participant_id,
-                    condition: trial.condition || '',
-                    trial_num: trial.trial_num,
-                    top_stim: trial.top_stim,
-                    top_cat: trial.top_cat,
-                    left_stim: trial.left_stim,
-                    left_cat: trial.left_cat,
-                    middle_stim: trial.middle_stim,
-                    middle_cat: trial.middle_cat,
-                    right_stim: trial.right_stim,
-                    right_cat: trial.right_cat,
-                    rt: trial.rt,
-                    time_elapsed: trial.time_elapsed,
-                    prolific_id: prolific_id,
-                    response_stim: trial.response_stim,
-                    response_cat: trial.response_cat,
-                    orig_left_stim: trial.orig_left_stim,
-                    orig_left_cat: trial.orig_left_cat,
-                    orig_middle_stim: trial.orig_middle_stim,
-                    orig_middle_cat: trial.orig_middle_cat,
-                    orig_right_stim: trial.orig_right_stim,
-                    orig_right_cat: trial.orig_right_cat
-                };
-            });
-        
-            // Log the filtered data before stringifying
-            console.log('Filtered Data:', filteredData);
-            console.log('Number of filtered trials:', filteredData.length);
-        
-            return JSON.stringify(filteredData);
-        }
+    // Filter choice trials
+    const choiceTrials = allData.filter(trial => 
+        trial.trial_type === 'image-button-response' && 
+        trial.top_stim !== undefined
+    );
+    
+    console.log('Number of choice trials found:', choiceTrials.length);
+    
+    // Map to final format
+    const formattedData = choiceTrials.map(trial => ({
+        subCode: participant_id,
+        condition: trial.condition || '',
+        trial_num: trial.trial_num,
+        top_stim: trial.top_stim,
+        top_cat: trial.top_cat,
+        left_stim: trial.left_stim,
+        left_cat: trial.left_cat,
+        middle_stim: trial.middle_stim,
+        middle_cat: trial.middle_cat,
+        right_stim: trial.right_stim,
+        right_cat: trial.right_cat,
+        rt: trial.rt,
+        time_elapsed: trial.time_elapsed,
+        prolific_id: prolific_id,
+        response_stim: trial.response_stim,
+        response_cat: trial.response_cat,
+        orig_left_stim: trial.orig_left_stim,
+        orig_left_cat: trial.orig_left_cat,
+        orig_middle_stim: trial.orig_middle_stim,
+        orig_middle_cat: trial.orig_middle_cat,
+        orig_right_stim: trial.orig_right_stim,
+        orig_right_cat: trial.orig_right_cat
+    }));
 
-// Updated save_data configuration
+    console.log('Formatted data length:', formattedData.length);
+    return JSON.stringify(formattedData);
+}
+
+// Configure data saving
 const save_data = {
     type: jsPsychPipe,
     action: "save",
@@ -300,11 +290,12 @@ const save_data = {
     filename: filename,
     data_string: getFilteredData,
     success_callback: function() {
-        console.log('Data saved successfully');
-        console.log('Number of trials saved:', JSON.parse(getFilteredData()).length);
+        console.log('Data saved successfully to DataPipe');
+        const data = JSON.parse(getFilteredData());
+        console.log('Number of trials saved:', data.length);
     },
     error_callback: function(error) {
-        console.error('Error saving data:', error);
+        console.error('Error saving to DataPipe:', error);
     }
 };
 
@@ -313,7 +304,7 @@ async function runExperiment() {
     try {
         // Load trials from CSV
         const trialsData = await loadTrials();
-        console.log('Loaded trials:', trialsData.length); // Debug log
+        console.log('Loaded trials:', trialsData.length);
         
         if (trialsData.length === 0) {
             console.error('No trials loaded!');
@@ -330,10 +321,9 @@ async function runExperiment() {
             save_data,
             end_fullscreen,
             survey_redirect
-
         ];
 
-        console.log('Timeline created with', timeline.length, 'items'); // Debug log
+        console.log('Timeline created with', timeline.length, 'items');
 
         // Run the experiment
         await jsPsych.run(timeline);
