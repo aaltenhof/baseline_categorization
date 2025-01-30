@@ -132,7 +132,8 @@ def get_quads(all_possible_triads, condition):
                 vcs_numbers = list(vcs_numbers)
                 #print (vcs_numbers)
                 letters = list(letters)
-                    
+
+                
                 acceptable_quads.append({'quad': vcs_numbers, 'cat': letters})
 
     # print statement to check if bottom shuffling works      
