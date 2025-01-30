@@ -1,6 +1,26 @@
 // Generate participant ID at the start
 let participant_id = `participant${Math.floor(Math.random() * 999) + 1}`;
 
+// Function to generate a random string of specified length
+function generateRandomString(length) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+}
+
+// Function to generate completion code
+function getCompletionCode() {
+    // Generate format: XXXzvzYYY where X and Y are random characters
+    const prefix = generateRandomString(3);
+    const suffix = generateRandomString(3);
+    const code = `${prefix}zvz${suffix}`;
+    return Promise.resolve(code);  // Return a promise to maintain async compatibility
+}
+
+
 // Function to get URL parameters
 function getUrlParam(param) {
     const urlParams = new URLSearchParams(window.location.search);
@@ -71,6 +91,7 @@ async function getCompletionCode() {
 }
 
 // Completion code and redirect trial
+// Completion code and redirect trial
 const completion_code = {
     type: jsPsychHtmlKeyboardResponse,
     stimulus: async function() {
@@ -81,13 +102,10 @@ const completion_code = {
             completion_code: code
         });
 
-        // Construct the Qualtrics URL with the code as a parameter
-        const qualtricsUrl = `https://uwmadison.co1.qualtrics.com/jfe/form/SV_a9GuS8KJgA1mJTg?completion_code=${code}`;
-
         return `
             <p>You have completed the main experiment!</p>
             <p>Your completion code is: <strong>${code}</strong></p>
-            <p>Please make a note of this code in case there are any technical issues.</p>
+            <p>Please make a note of this code - you will need to enter it in MTurk to receive payment.</p>
             <p>You will now be redirected to a brief survey.</p>
             <p>Press any key to continue to the survey.</p>
         `;
@@ -246,7 +264,7 @@ const instructions = {
         <p>In this task, you will be shown four shapes. One on the top, and three on the bottom.
         <p>Use the mouse to select whether the left, right or middle shape is most similar to the top shape as quickly as you can.</p>
         <p>At the end, there will be a survey, after which you will receive your completion code.</p>
-        <p>The study will take about TIME minutes.</p>
+        <p>The study will take about 5 minutes.</p>
         <p>Press any key when you are ready to continue.</p>
     `
 };
@@ -257,7 +275,7 @@ const consent = {
         <div style="width: 800px; margin: 0 auto; text-align: left">
             <h3>Consent to Participate in Research</h3>
             
-            <p>The task you are about to do is sponsored by University of Wisconsin-Madison. It is part of a protocol titled "What are we learning from language?".</p>
+            <p>The task you are about to do is sponsored by University of Wisconsin-Madison. It is part of a protocol titled "What are we learning from language?"</p>
 
             <p>The task you are asked to do involves making simple responses to words and sentences. For example, you may be asked to rate a pair of words on their similarity or to indicate how true you think a given sentence is. More detailed instructions for this specific task will be provided on the next screen.</p>
 
