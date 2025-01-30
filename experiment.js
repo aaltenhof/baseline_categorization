@@ -1,6 +1,5 @@
 // Generate participant ID at the start
 let participant_id = `participant${Math.floor(Math.random() * 999) + 1}`;
-let prolific_id;
 
 // Function to get URL parameters
 function getUrlParam(param) {
@@ -34,12 +33,10 @@ async function generateParticipantId() {
 // Add participant ID to all data
 jsPsych.data.addProperties({
     participant_id: participant_id,
-    subject_id: workerId,
+    worker_id: workerId,
     condition: null  // This will be updated when we get the condition
 });
 
-// Initialize participant ID
-const filename = `${participant_id}.csv`;
 
 // Function to generate completion code
 async function getCompletionCode() {
@@ -60,24 +57,49 @@ function getImagePath(stimName) {
     return `stimuli/visual/${stimName}.png`;
 }
 
-// Completion code display trial
+async function getCompletionCode() {
+    try {
+        const response = await fetch('http://sapir.psych.wisc.edu/~steve/KeyGenQualtrics.php');
+        const code = await response.text();
+        return code.trim();
+    } catch (error) {
+        console.error('Error generating completion code:', error);
+        // Fallback code generation if the PHP script fails
+        const random = Math.random().toString(36).substring(2, 15);
+        return `MTzvz${random}`;
+    }
+}
+
+// Completion code and redirect trial
 const completion_code = {
     type: jsPsychHtmlKeyboardResponse,
     stimulus: async function() {
         const code = await getCompletionCode();
+        
+        // Store the code in jsPsych data
+        jsPsych.data.addProperties({
+            completion_code: code
+        });
+
+        // Construct the Qualtrics URL with the code as a parameter
+        const qualtricsUrl = `https://uwmadison.co1.qualtrics.com/jfe/form/SV_a9GuS8KJgA1mJTg?completion_code=${code}`;
+
         return `
-            <p>You have completed the experiment!</p>
-            <p>Your completion code is:</p>
-            <h1>${code}</h1>
-            <p>Please copy this code and paste it into the box on MTurk to receive payment.</p>
-            <p>You may close this window after copying the code.</p>
-            <p>Press any key to end the experiment.</p>
+            <p>You have completed the main experiment!</p>
+            <p>Your completion code is: <strong>${code}</strong></p>
+            <p>Please make a note of this code in case there are any technical issues.</p>
+            <p>You will now be redirected to a brief survey.</p>
+            <p>Press any key to continue to the survey.</p>
         `;
     },
-    data: {
-        trial_type: 'completion'
+    on_finish: function() {
+        // Get the code we stored
+        const code = jsPsych.data.get().last(1).values()[0].completion_code;
+        // Redirect to Qualtrics with the code
+        window.location.href = `https://uwmadison.co1.qualtrics.com/jfe/form/SV_a9GuS8KJgA1mJTg?completion_code=${code}`;
     }
 };
+
 // Function to load trials
 async function loadTrials() {
     try {
@@ -179,7 +201,7 @@ function createTrials(trialsData) {
             response_ends_trial: true,
             post_trial_gap: 500,
             data: {
-                subCode: participant_id,
+                subCode: worker_id,
                 trial_num: trial.trial_num,
                 condition: trial.condition,
                 top_stim: trial.top_stim,
@@ -223,7 +245,7 @@ const instructions = {
         <h3>Thank you for participating in this experiment!</h3>
         <p>In this task, you will be shown four shapes. One on the top, and three on the bottom.
         <p>Use the mouse to select whether the left, right or middle shape is most similar to the top shape as quickly as you can.</p>
-        <p>At the end, there will be a survey, after which you will receive your Prolific completion code.</p>
+        <p>At the end, there will be a survey, after which you will receive your completion code.</p>
         <p>The study will take about TIME minutes.</p>
         <p>Press any key when you are ready to continue.</p>
     `
@@ -284,7 +306,7 @@ const survey_redirect = {
     type: jsPsychHtmlKeyboardResponse,
     stimulus: `
         <p>You have completed the experiment!</p>
-        <p>You will now be redirected to a brief survey, after which you will receive your Prolific completion code</p>
+        <p>You will now be redirected to a brief survey, after which you will receive your completion code.</p>
         <p>Press any key to continue.</p>
     `,
     on_finish: function() {
@@ -304,7 +326,7 @@ function getFilteredData() {
     
     // Map to array of objects with specific field order
     const formattedData = choiceTrials.map(trial => ({
-        subCode: participant_id,
+        subCode: worker_id,
         condition: trial.condition,
         trial_num: trial.trial_num,
         top_stim: trial.top_stim,
@@ -317,7 +339,6 @@ function getFilteredData() {
         right_cat: trial.right_cat,
         rt: trial.rt,
         time_elapsed: trial.time_elapsed,
-        prolific_id: prolific_id,
         response_stim: trial.response_stim,
         response_cat: trial.response_cat
     }));
@@ -339,7 +360,7 @@ const save_data = {
     type: jsPsychPipe,
     action: "save",
     experiment_id: "cSLwXHzhSpL2",
-    filename: `${participant_id}.csv`,
+    filename: `${worker_id}.csv`,
     data_string: getFilteredData,
     success_callback: function() {
         console.log('Data saved successfully to DataPipe');
@@ -393,7 +414,7 @@ async function runExperiment() {
             ...createTrials(trialsData),
             save_data,
             end_fullscreen,
-            completion_code  // Replace survey_redirect with completion code display
+            completion_code 
         ];
 
         // Run the experiment
