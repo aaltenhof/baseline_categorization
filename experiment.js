@@ -11,16 +11,6 @@ function generateRandomString(length) {
     return result;
 }
 
-// Function to generate completion code
-function getCompletionCode() {
-    // Generate format: XXXzvzYYY where X and Y are random characters
-    const prefix = generateRandomString(3);
-    const suffix = generateRandomString(3);
-    const code = `${prefix}zvz${suffix}`;
-    return Promise.resolve(code);  // Return a promise to maintain async compatibility
-}
-
-
 // Function to get URL parameters
 function getUrlParam(param) {
     const urlParams = new URLSearchParams(window.location.search);
@@ -38,6 +28,7 @@ const jsPsych = initJsPsych({
     on_finish: function() {
         console.log('Experiment finished');
         console.log('Worker ID:', workerId);
+        console.log('Completion Code:', completion_code);
         console.log('Number of trials:', jsPsych.data.get()
             .filter({trial_type: 'image-button-response'})
             .count());
@@ -51,9 +42,11 @@ async function generateParticipantId() {
 }
 
 
+// Add all IDs to jsPsych data properties
 jsPsych.data.addProperties({
     participant_id: participant_id,
-    workerId: workerId,  // Now matches the variable name
+    workerId: workerId,
+    completion_code: completion_code,
     condition: null
 });
 
@@ -64,35 +57,26 @@ function getImagePath(stimName) {
 }
 
 
-// Completion code and redirect trial
-const completion_code = {
-    type: jsPsychHtmlKeyboardResponse,
-    stimulus: async function() {
-        const code = await getCompletionCode();
-        
-        // Store the code in jsPsych data
-        jsPsych.data.addProperties({
-            completion_code: code
-        });
 
-        // Construct Qualtrics URL with the code and worker ID
-        const qualtricsUrl = `https://uwmadison.co1.qualtrics.com/jfe/form/SV_a9GuS8KJgA1mJTg?completion_code=${code}&workerId=${workerId}`;
-
-        // Store the URL for the redirect
-        this.qualtricsUrl = qualtricsUrl;
-
+const completion_code_trial = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: function() {
         return `
             <p>You have completed the main experiment!</p>
-            <p>Your completion code is: <strong>${code}</strong></p>
+            <p>Your completion code is: <strong>${completion_code}</strong></p>
             <p>Please make a note of this code - you will need to enter it in MTurk to receive payment.</p>
-            <p>You will now be redirected to a brief survey.</p>
-            <p>Press any key to continue to the survey.</p>
+            <p>Click the button below to continue to a brief survey.</p>
         `;
     },
-    on_finish: function(data) {
-        window.location.href = this.qualtricsUrl;
+    choices: ['Continue to Survey'],
+    data: {
+        trial_type: 'completion'
+    },
+    on_finish: function() {
+        window.location.href = `https://uwmadison.co1.qualtrics.com/jfe/form/SV_a9GuS8KJgA1mJTg?completion_code=${completion_code}&workerId=${workerId}`;
     }
 };
+
 // Function to load trials
 async function loadTrials() {
     try {
