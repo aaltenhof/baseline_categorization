@@ -58,37 +58,11 @@ jsPsych.data.addProperties({
 });
 
 
-// Function to generate completion code
-async function getCompletionCode() {
-    try {
-        const response = await fetch('http://sapir.psych.wisc.edu/~steve/KeyGenQualtrics.php');
-        const code = await response.text();
-        return code.trim();
-    } catch (error) {
-        console.error('Error generating completion code:', error);
-        // Fallback code generation if the PHP script fails
-        const random = Math.random().toString(36).substring(2, 15);
-        return `MTzvz${random}`;
-    }
-}
-
 // Function to create image path
 function getImagePath(stimName) {
     return `stimuli/visual/${stimName}.png`;
 }
 
-async function getCompletionCode() {
-    try {
-        const response = await fetch('http://sapir.psych.wisc.edu/~steve/KeyGenQualtrics.php');
-        const code = await response.text();
-        return code.trim();
-    } catch (error) {
-        console.error('Error generating completion code:', error);
-        // Fallback code generation if the PHP script fails
-        const random = Math.random().toString(36).substring(2, 15);
-        return `MTzvz${random}`;
-    }
-}
 
 // Completion code and redirect trial
 // Completion code and redirect trial
