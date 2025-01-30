@@ -65,7 +65,6 @@ function getImagePath(stimName) {
 
 
 // Completion code and redirect trial
-// Completion code and redirect trial
 const completion_code = {
     type: jsPsychHtmlKeyboardResponse,
     stimulus: async function() {
@@ -76,6 +75,12 @@ const completion_code = {
             completion_code: code
         });
 
+        // Construct Qualtrics URL with the code and worker ID
+        const qualtricsUrl = `https://uwmadison.co1.qualtrics.com/jfe/form/SV_a9GuS8KJgA1mJTg?completion_code=${code}&workerId=${workerId}`;
+
+        // Store the URL for the redirect
+        this.qualtricsUrl = qualtricsUrl;
+
         return `
             <p>You have completed the main experiment!</p>
             <p>Your completion code is: <strong>${code}</strong></p>
@@ -84,14 +89,10 @@ const completion_code = {
             <p>Press any key to continue to the survey.</p>
         `;
     },
-    on_finish: function() {
-        // Get the code we stored
-        const code = jsPsych.data.get().last(1).values()[0].completion_code;
-        // Redirect to Qualtrics with the code
-        window.location.href = `https://uwmadison.co1.qualtrics.com/jfe/form/SV_a9GuS8KJgA1mJTg?completion_code=${code}`;
+    on_finish: function(data) {
+        window.location.href = this.qualtricsUrl;
     }
 };
-
 // Function to load trials
 async function loadTrials() {
     try {
@@ -293,18 +294,6 @@ const end_fullscreen = {
     message: null
 };
 
-// Survey redirect trial
-const survey_redirect = {
-    type: jsPsychHtmlKeyboardResponse,
-    stimulus: `
-        <p>You have completed the experiment!</p>
-        <p>You will now be redirected to a brief survey, after which you will receive your completion code.</p>
-        <p>Press any key to continue.</p>
-    `,
-    on_finish: function() {
-        window.location = "https://uwmadison.co1.qualtrics.com/jfe/form/SV_a9GuS8KJgA1mJTg";
-    }
-};
 
 // Function to filter and format data for saving
 function getFilteredData() {
