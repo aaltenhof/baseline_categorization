@@ -380,7 +380,7 @@ async function runExperiment() {
             ...createTrials(trialsData),
             save_data,
             end_fullscreen,
-            completion_code 
+            completion_code_trial 
         ];
 
         // Run the experiment
