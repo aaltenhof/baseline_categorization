@@ -30,11 +30,11 @@ async function generateParticipantId() {
     return `participant${baseId}`;
 }
 
-// Add participant ID to all data
+
 jsPsych.data.addProperties({
     participant_id: participant_id,
-    worker_id: workerId,
-    condition: null  // This will be updated when we get the condition
+    workerId: workerId,  // Now matches the variable name
+    condition: null
 });
 
 
@@ -201,7 +201,7 @@ function createTrials(trialsData) {
             response_ends_trial: true,
             post_trial_gap: 500,
             data: {
-                subCode: worker_id,
+                subCode: workerId,
                 trial_num: trial.trial_num,
                 condition: trial.condition,
                 top_stim: trial.top_stim,
@@ -326,7 +326,7 @@ function getFilteredData() {
     
     // Map to array of objects with specific field order
     const formattedData = choiceTrials.map(trial => ({
-        subCode: worker_id,
+        subCode: workerId,
         condition: trial.condition,
         trial_num: trial.trial_num,
         top_stim: trial.top_stim,
@@ -360,7 +360,7 @@ const save_data = {
     type: jsPsychPipe,
     action: "save",
     experiment_id: "cSLwXHzhSpL2",
-    filename: `${worker_id}.csv`,
+    filename: `${workerId}.csv`,
     data_string: getFilteredData,
     success_callback: function() {
         console.log('Data saved successfully to DataPipe');
