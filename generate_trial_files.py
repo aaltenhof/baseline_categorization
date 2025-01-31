@@ -66,5 +66,5 @@ def generate_quad_trials(condition):
         		
 
 
-generate_quad_trials(1)
+generate_quad_trials("4")
 

@@ -87,10 +87,10 @@ async function loadTrials() {
         
         // Determine which file to load
         let filename = 'trials/test_quad.csv'; // default file
-        if (condition === 0) filename = 'trials/quad1.csv';
-        if (condition === 1) filename = 'trials/quad2.csv';
-        if (condition === 2) filename = 'trials/quad3.csv';
-        if (condition === 3) filename = 'trials/quad4.csv';
+        if (condition === 0) filename = 'trials/quadfinal.csv';
+        if (condition === 1) filename = 'trials/quadfinal.csv';
+        if (condition === 2) filename = 'trials/quadfinal.csv';
+        if (condition === 3) filename = 'trials/quadfinal.csv'; // reroute everyone to the same file for now
         
         const response = await fetch(filename);
         const csvText = await response.text();
